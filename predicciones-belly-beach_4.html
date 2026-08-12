@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Predicciones Belly Beach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;1,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --sunset1:#16A34A; --sunset2:#0EA5A0; --night:#050608; --night2:#0B0D12;
+    --teal:#22C55E; --gold:#F2B705; --card:#12141A; --card2:#181B22; --ink:#EAF0FB;
+  }
+  *{box-sizing:border-box;}
+  html{ overflow-x:hidden; width:100%; }
+  body{
+    margin:0; width:100%; min-height:100vh; overflow-x:hidden; font-family:'Nunito',sans-serif; color:var(--ink);
+    background:
+      radial-gradient(circle at 20% 0%, rgba(242,183,5,0.06), transparent 45%),
+      radial-gradient(circle at 85% 100%, rgba(34,197,94,0.06), transparent 45%),
+      linear-gradient(180deg, var(--night) 0%, var(--night2) 100%);
+    padding-bottom:40px;
+  }
+  header{ text-align:center; padding:32px 20px 14px; }
+  .eyebrow{ font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:.72rem; color:var(--gold); margin-bottom:6px;}
+  h1{
+    font-family:'Baloo 2', sans-serif; font-weight:800; font-size:clamp(1.7rem, 8vw, 2.1rem); margin:0 0 6px; line-height:1.05;
+    background:linear-gradient(90deg,var(--gold),var(--teal) 65%,var(--sunset2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sub{ font-size:.9rem; color:#D9CFF2; max-width:420px; margin:0 auto;}
+
+  .tabs{ width:100%; max-width:480px; margin:20px auto 0; padding:0 18px; display:flex; gap:6px;}
+  .tab{
+    flex:1; text-align:center; padding:11px 6px; border-radius:14px; font-weight:700; font-size:.78rem;
+    background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.1); cursor:pointer; color:#D9CFF2;
+  }
+  .tab.active{ background:linear-gradient(120deg,var(--sunset1),var(--sunset2)); color:#fff; border-color:transparent;}
+
+  main{ width:100%; max-width:480px; margin:0 auto; padding:20px 18px 0;}
+
+  .picker{margin-bottom:18px;}
+  .picker label{ display:block; font-weight:700; font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--gold); margin-bottom:8px;}
+  select{
+    width:100%; padding:13px 16px; border-radius:14px; border:2px solid rgba(255,255,255,0.18);
+    background:var(--card); color:var(--ink); font-family:'Nunito',sans-serif; font-weight:700; font-size:1rem; appearance:none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--gold) 50%), linear-gradient(135deg, var(--gold) 50%, transparent 50%);
+    background-position: calc(100% - 22px) calc(1em + 4px), calc(100% - 16px) calc(1em + 4px);
+    background-size: 6px 6px, 6px 6px; background-repeat:no-repeat;
+  }
+
+  .avatar{
+    position:relative; width:44px; height:44px; border-radius:50%; overflow:hidden; flex-shrink:0;
+    background:linear-gradient(135deg,var(--sunset1),var(--sunset2)); display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-family:'Baloo 2',sans-serif; color:#fff; font-size:.85rem; border:2px solid rgba(255,255,255,0.15);
+  }
+  .avatar img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+
+  .whocard{ display:flex; align-items:center; gap:12px; background:var(--card); border-radius:14px; padding:12px 14px; margin-top:10px; border:1px solid rgba(255,255,255,0.08);}
+  .whocard .name{ font-weight:700; font-size:.9rem;}
+
+  .locked-msg{
+    background:var(--card); border-radius:16px; padding:22px 18px; text-align:center; margin-top:20px; border:1px solid rgba(255,255,255,0.08);
+  }
+  .locked-msg .big{ font-family:'Baloo 2',sans-serif; font-size:1.1rem; font-weight:800; color:var(--gold); margin-bottom:6px;}
+  .locked-msg p{ font-size:.85rem; color:#D9CFF2; margin:4px 0;}
+
+  .event-card{
+    background:var(--card); border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid rgba(255,255,255,0.08);
+  }
+  .event-text{ font-weight:700; font-size:.92rem; margin-bottom:10px; line-height:1.3; overflow-wrap:break-word;}
+  .stars{ display:flex; gap:6px; }
+  .star{ font-size:1.6rem; cursor:pointer; color:rgba(255,255,255,0.2); transition:transform .1s, color .15s; user-select:none;}
+  .star.filled{ color:var(--gold); }
+  .star:active{ transform:scale(1.2); }
+  .bet-hint{ font-size:.68rem; color:#9C8FC2; margin-top:6px;}
+
+  .progress{
+    position:sticky; top:0; z-index:5; background:rgba(34,16,65,0.92); backdrop-filter:blur(6px); padding:10px 18px;
+    text-align:center; font-size:.78rem; font-weight:700; color:#D9CFF2; border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+  .progress span{ color:var(--gold); }
+
+  .savebar{
+    position:sticky; bottom:0; margin-top:20px; padding:14px 18px; background:linear-gradient(160deg, rgba(34,16,65,0.4), rgba(34,16,65,0.95) 40%);
+    backdrop-filter:blur(4px);
+  }
+  .savebtn{
+    width:100%; padding:15px; border-radius:16px; border:none; font-family:'Baloo 2',sans-serif; font-weight:700;
+    font-size:1.05rem; background:linear-gradient(120deg,var(--gold),var(--teal)); color:#0B1220; cursor:pointer;
+  }
+  .savebtn:disabled{ opacity:.5; }
+  .status{ text-align:center; font-size:.78rem; color:#B9AEDD; margin-top:8px; min-height:16px;}
+
+  .rank-note{ text-align:center; font-size:.73rem; color:#8A93A6; margin-bottom:14px; line-height:1.4;}
+
+  .podium{ display:flex; align-items:flex-end; gap:8px; margin-bottom:18px; }
+  .podium-card{
+    flex:1; background:var(--card); border-radius:16px; padding:14px 8px 12px; text-align:center;
+    border:1px solid rgba(255,255,255,0.06); position:relative;
+  }
+  .podium-card.p1{ background:linear-gradient(180deg, rgba(242,183,5,0.14), var(--card) 60%); border-color:rgba(242,183,5,0.5); padding-top:20px; order:2;}
+  .podium-card.p2{ order:1; }
+  .podium-card.p3{ order:3; }
+  .podium-rank{
+    position:absolute; top:8px; left:8px; width:20px; height:20px; border-radius:50%; background:rgba(255,255,255,0.08);
+    font-size:.68rem; font-weight:800; display:flex; align-items:center; justify-content:center; color:#B9C2D4;
+  }
+  .podium-card.p1 .podium-rank{ background:var(--gold); color:#0B0D12; }
+  .podium-trophy{ font-size:1.4rem; margin-bottom:4px;}
+  .podium-avatar{ width:52px; height:52px; margin:0 auto 8px; }
+  .podium-card.p1 .podium-avatar{ width:64px; height:64px; }
+  .podium-name{ font-size:.74rem; font-weight:800; line-height:1.2; margin-bottom:4px; overflow-wrap:break-word;}
+  .podium-pts{ font-family:'Baloo 2',sans-serif; font-weight:800; color:var(--gold); font-size:1.15rem;}
+  .podium-card.p1 .podium-pts{ font-size:1.4rem; }
+  .podium-sub{ font-size:.6rem; color:#8A93A6; margin-top:2px;}
+
+  .rank-item{
+    display:flex; align-items:center; gap:12px; background:var(--card); border-radius:14px; padding:12px 14px; margin-bottom:8px;
+    border:1px solid rgba(255,255,255,0.06);
+  }
+  .rank-item.leader{ border-color:var(--gold); }
+  .rank-num{ font-family:'Baloo 2',sans-serif; font-weight:800; font-size:1.05rem; color:#8A93A6; width:20px; text-align:center; flex-shrink:0;}
+  .rank-name-wrap{ flex:1; min-width:0; }
+  .rank-name{ font-size:.85rem; font-weight:700; line-height:1.25; overflow-wrap:break-word; margin-bottom:4px;}
+  .rank-underline{ height:2px; background:linear-gradient(90deg,var(--gold),transparent); border-radius:2px; }
+  .rank-score{ display:flex; flex-direction:column; align-items:flex-end; flex-shrink:0;}
+  .rank-pts{ font-family:'Baloo 2',sans-serif; font-weight:800; color:var(--gold); font-size:1.05rem;}
+  .rank-sub{ font-size:.65rem; color:#8A93A6;}
+
+  .quota-item{
+    background:var(--card); border-radius:14px; padding:12px 14px; margin-bottom:10px; border:1px solid rgba(255,255,255,0.08);
+  }
+  .quota-text{ font-size:.85rem; font-weight:700; margin-bottom:8px; line-height:1.25;}
+  .quota-bar-wrap{ background:rgba(255,255,255,0.08); border-radius:8px; height:8px; overflow:hidden; margin-bottom:6px;}
+  .quota-bar{ height:100%; background:linear-gradient(90deg,var(--teal),var(--gold)); border-radius:8px;}
+  .quota-meta{ display:flex; justify-content:space-between; font-size:.68rem; color:#9C8FC2;}
+  .quota-avg{ color:var(--gold); font-weight:800;}
+
+  .missing{ font-size:.75rem; color:#9C8FC2; text-align:center; margin-top:6px;}
+  .empty{ text-align:center; color:#9C8FC2; font-size:.85rem; padding:40px 20px;}
+  .foot{ text-align:center; margin-top:20px; font-size:.72rem; color:#9C8FC2;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Pronóstico grupal</div>
+  <h1>¿QUÉ TAN<br>PROBABLE ES?</h1>
+  <div class="sub">4K & 4L · califica del 1 al 5 qué tan probable es cada evento. Una sola vez, no se puede editar 🌅</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="vote">Predecir</div>
+  <div class="tab" data-tab="quotas">Cuotas</div>
+  <div class="tab" data-tab="rank">Ranking</div>
+</div>
+
+<main>
+  <div id="voteView">
+    <div class="picker">
+      <label for="who">¿Quién eres?</label>
+      <select id="who"></select>
+      <div class="whocard" id="whoCard" style="display:none;">
+        <div class="avatar" id="whoAvatar"></div>
+        <div class="name" id="whoName"></div>
+      </div>
+    </div>
+    <div id="voteArea"></div>
+  </div>
+
+  <div id="quotasView" style="display:none;">
+    <div id="quotasList"></div>
+  </div>
+
+  <div id="rankView" style="display:none;">
+    <div id="rankList"></div>
+  </div>
+</main>
+
+<div class="savebar" id="savebar">
+  <button class="savebtn" id="saveBtn">Enviar mis predicciones (no se puede editar después)</button>
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+// ====== CONFIGURA ESTO ======
+const SUPABASE_URL = "https://nvoaqjbadnyynvehdcok.supabase.co";
+const SUPABASE_KEY = "sb_publishable_ZmYsyEEDeS9ZQJK7dO4rsQ_FVicHeur";
+// =============================
+let sb = null;
+let sbReady = false;
+try{
+  if(SUPABASE_URL !== "PON_TU_URL_AQUI" && SUPABASE_KEY !== "PON_TU_ANON_KEY_AQUI"){
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    sbReady = true;
+  }
+} catch(e){
+  console.error('Supabase no configurado aún:', e);
+}
+
+const PEOPLE = [
+  {id:"tata", nick:"El Tata", full:"Joaquín Zárate", initials:"JZ"},
+  {id:"colales", nick:"Colales", full:"Martín Muñoz", initials:"MM"},
+  {id:"lukitas", nick:"Lukitas", full:"Lucas Barril", initials:"LB"},
+  {id:"mp", nick:"MP", full:"Matías Palma", initials:"MP"},
+  {id:"sebi", nick:"Sebi Sebi", full:"Sebastián Bustos", initials:"SB"},
+  {id:"sote", nick:"Sote/Nine", full:"Ignacio Soto S.", initials:"IS"},
+  {id:"nave", nick:"El Nave", full:"Sergio Barrios", initials:"SB"},
+  {id:"gus", nick:"Gus", full:"Gustavo Yáñez", initials:"GY"},
+  {id:"gianca", nick:"Gianca", full:"Giancarlo Dall'Orso", initials:"GD"},
+  {id:"shoyo", nick:"Shoyo", full:"Benjamin Vega", initials:"BV"},
+  {id:"gabigol", nick:"Gabigol", full:"Gabriel Lobos", initials:"GL"},
+  {id:"checho", nick:"Checho", full:"Ignacio Soto A.", initials:"IA"},
+];
+
+// Los eventos ya NO están fijos en el código: viven en la tabla `events` de Supabase
+// para que los puedas agregar/editar/borrar desde el admin mientras no estén definitivos.
+let EVENTS = [];
+
+async function fetchEvents(){
+  if(!sbReady) return [];
+  const { data } = await sb.from('events').select('id, text').order('sort_order', { ascending: true });
+  return data || [];
+}
+
+const RARE_THRESHOLD = 3; // si <= 3 personas apostaron esa dirección, vale doble si acierta
+
+function avatarHTML(person){
+  return `<span>${person.initials}</span><img src="avatars/${person.id}.jpg" onerror="this.remove()">`;
+}
+
+function betOf(rating){
+  if(rating >= 4) return true;
+  if(rating <= 2) return false;
+  return null; // 3 = neutral, no apuesta
+}
+
+const whoSel = document.getElementById('who');
+PEOPLE.forEach(p=>{
+  const o = document.createElement('option');
+  o.value = p.id; o.textContent = `${p.nick} · ${p.full}`;
+  whoSel.appendChild(o);
+});
+
+let currentRatings = {};
+
+function showWhoCard(personId){
+  const p = PEOPLE.find(x=>x.id===personId);
+  document.getElementById('whoAvatar').innerHTML = avatarHTML(p);
+  document.getElementById('whoName').textContent = `${p.nick} · ${p.full}`;
+  document.getElementById('whoCard').style.display = 'flex';
+}
+
+function updateProgress(){
+  const answered = Object.keys(currentRatings).length;
+  const bar = document.getElementById('progressBar');
+  if(bar) bar.innerHTML = `Calificados: <span>${answered}/${EVENTS.length}</span>`;
+}
+
+function renderStars(eventId, value){
+  const wrap = document.createElement('div');
+  wrap.className = 'stars';
+  for(let i=1;i<=5;i++){
+    const s = document.createElement('span');
+    s.className = 'star' + (i<=value ? ' filled' : '');
+    s.textContent = '★';
+    s.addEventListener('click', ()=>{ currentRatings[eventId] = i; renderEventList(); });
+    wrap.appendChild(s);
+  }
+  return wrap;
+}
+
+function renderEventList(){
+  const area = document.getElementById('voteArea');
+  area.innerHTML = '';
+  const bar = document.createElement('div');
+  bar.className = 'progress';
+  bar.id = 'progressBar';
+  area.appendChild(bar);
+
+  EVENTS.forEach(ev=>{
+    const card = document.createElement('div');
+    card.className = 'event-card';
+    const t = document.createElement('div');
+    t.className = 'event-text';
+    t.textContent = ev.text;
+    card.appendChild(t);
+    card.appendChild(renderStars(ev.id, currentRatings[ev.id] || 0));
+    const hint = document.createElement('div');
+    hint.className = 'bet-hint';
+    hint.textContent = '4-5 = crees que sí pasará · 1-2 = crees que no · 3 = ni idea (no apuestas)';
+    card.appendChild(hint);
+    area.appendChild(card);
+  });
+  updateProgress();
+}
+
+function showLockedView(personId, existing){
+  const p = PEOPLE.find(x=>x.id===personId);
+  const area = document.getElementById('voteArea');
+  const values = Object.values(existing);
+  const yes = values.filter(v=>v>=4).length;
+  const no = values.filter(v=>v<=2).length;
+  const neutral = values.filter(v=>v===3).length;
+  area.innerHTML = `
+    <div class="locked-msg">
+      <div class="big">Ya enviaste tus predicciones ✅</div>
+      <p>${p.nick}, quedaron guardadas para siempre y no se pueden editar.</p>
+      <p>Apostaste <strong>sí</strong> en ${yes}, <strong>no</strong> en ${no}, y quedaste neutral en ${neutral}.</p>
+      <p>Anda a <strong>Cuotas</strong> o <strong>Ranking</strong> para ver cómo va todo.</p>
+    </div>`;
+  document.getElementById('savebar').style.display = 'none';
+}
+
+async function loadPersonState(personId){
+  showWhoCard(personId);
+  document.getElementById('savebar').style.display = 'block';
+  if(!sbReady){
+    document.getElementById('voteArea').innerHTML = '<div class="empty">⚠️ Falta configurar Supabase (SUPABASE_URL / SUPABASE_KEY) en el código para poder guardar predicciones.</div>';
+    document.getElementById('savebar').style.display = 'none';
+    return;
+  }
+  document.getElementById('voteArea').innerHTML = '<div class="empty">Cargando…</div>';
+  EVENTS = await fetchEvents();
+  if(EVENTS.length === 0){
+    document.getElementById('voteArea').innerHTML = '<div class="empty">Todavía no hay eventos cargados. Pídele al admin que agregue algunos.</div>';
+    document.getElementById('savebar').style.display = 'none';
+    return;
+  }
+  const { data } = await sb.from('predictions').select('guesses').eq('person_id', personId).maybeSingle();
+  if(data){
+    showLockedView(personId, data.guesses);
+  } else {
+    currentRatings = {};
+    renderEventList();
+  }
+}
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  const personId = whoSel.value;
+  const status = document.getElementById('status');
+  if(!sbReady){
+    status.textContent = '⚠️ Falta configurar Supabase en el código antes de poder guardar';
+    return;
+  }
+  const missing = EVENTS.filter(ev => currentRatings[ev.id]===undefined).length;
+  if(missing > 0){
+    status.textContent = `Te faltan ${missing} eventos por calificar`;
+    return;
+  }
+  status.textContent = 'Enviando...';
+  const p = PEOPLE.find(x=>x.id===personId);
+  const { error } = await sb.from('predictions').insert({
+    person_id: personId,
+    person_name: `${p.nick} · ${p.full}`,
+    guesses: currentRatings
+  });
+  if(error){
+    if(error.code === '23505'){
+      status.textContent = 'Ya habías enviado tus predicciones antes ✅';
+      loadPersonState(personId);
+    } else {
+      status.textContent = 'Error al guardar, intenta de nuevo';
+    }
+  } else {
+    status.textContent = '¡Enviado! Quedó guardado para siempre 🎉';
+    loadPersonState(personId);
+  }
+});
+
+whoSel.addEventListener('change', ()=> loadPersonState(whoSel.value));
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const which = tab.dataset.tab;
+    document.getElementById('voteView').style.display = which==='vote' ? 'block' : 'none';
+    document.getElementById('quotasView').style.display = which==='quotas' ? 'block' : 'none';
+    document.getElementById('rankView').style.display = which==='rank' ? 'block' : 'none';
+    if(which==='vote'){
+      document.getElementById('savebar').style.display = document.querySelector('.locked-msg') ? 'none' : 'block';
+    } else {
+      document.getElementById('savebar').style.display = 'none';
+      if(which==='quotas') loadQuotas();
+      if(which==='rank') loadRanking();
+    }
+  });
+});
+
+async function fetchAllPredictions(){
+  if(!sbReady) return [];
+  const { data } = await sb.from('predictions').select('person_id, person_name, guesses');
+  return data || [];
+}
+
+function warnIfNotConfigured(containerId){
+  if(sbReady) return false;
+  document.getElementById(containerId).innerHTML = '<div class="empty">⚠️ Falta configurar Supabase en el código para cargar datos.</div>';
+  return true;
+}
+
+async function loadQuotas(){
+  const list = document.getElementById('quotasList');
+  if(warnIfNotConfigured('quotasList')) return;
+  list.innerHTML = '<div class="empty">Cargando cuotas…</div>';
+  EVENTS = await fetchEvents();
+  const predictions = await fetchAllPredictions();
+  if(predictions.length === 0){
+    list.innerHTML = '<div class="empty">Nadie ha calificado todavía. ¡Ve a la pestaña Predecir!</div>';
+    return;
+  }
+  const rows = EVENTS.map(ev=>{
+    const values = predictions.map(pr=>pr.guesses[ev.id]).filter(v=>v!==undefined);
+    const avg = values.length ? values.reduce((a,b)=>a+b,0)/values.length : 0;
+    return { ...ev, avg, count: values.length };
+  }).filter(r=>r.count>0).sort((a,b)=> b.avg - a.avg);
+
+  list.innerHTML = `<div class="rank-note">Cuota = promedio de todas las calificaciones (1-5) que le puso el grupo a cada evento</div>` +
+    rows.map(r=>`
+      <div class="quota-item">
+        <div class="quota-text">${r.text}</div>
+        <div class="quota-bar-wrap"><div class="quota-bar" style="width:${(r.avg/5*100).toFixed(0)}%"></div></div>
+        <div class="quota-meta"><span class="quota-avg">${r.avg.toFixed(1)}/5</span><span>${r.count}/${PEOPLE.length} respondieron</span></div>
+      </div>`).join('');
+}
+
+async function loadRanking(){
+  const rankList = document.getElementById('rankList');
+  if(warnIfNotConfigured('rankList')) return;
+  rankList.innerHTML = '<div class="empty">Cargando ranking…</div>';
+
+  EVENTS = await fetchEvents();
+  const [predictions, { data: results }] = await Promise.all([
+    fetchAllPredictions(),
+    sb.from('results').select('event_id, happened')
+  ]);
+
+  const resultsMap = {};
+  (results || []).forEach(r=>{ if(r.happened !== null) resultsMap[r.event_id] = r.happened; });
+  const resolvedCount = Object.keys(resultsMap).length;
+
+  if(predictions.length === 0){
+    rankList.innerHTML = '<div class="empty">Nadie ha enviado predicciones todavía. ¡Ve a la pestaña Predecir!</div>';
+    return;
+  }
+
+  // Cuenta cuántos apostaron "sí" y cuántos "no" por evento (rating 3 = neutral, no cuenta)
+  const counts = {};
+  EVENTS.forEach(ev=>{ counts[ev.id] = {yes:0, no:0}; });
+  predictions.forEach(pr=>{
+    Object.entries(pr.guesses).forEach(([eventId, rating])=>{
+      if(!counts[eventId]) return;
+      const bet = betOf(rating);
+      if(bet === true) counts[eventId].yes++;
+      else if(bet === false) counts[eventId].no++;
+    });
+  });
+
+  const scored = predictions.map(pr=>{
+    let hits = 0, points = 0, bonusHits = 0, bets = 0;
+    Object.entries(resultsMap).forEach(([eventId, happened])=>{
+      const bet = betOf(pr.guesses[eventId]);
+      if(bet === null || bet === undefined) return; // se quedó neutral, no apostó
+      bets++;
+      if(bet === happened){
+        hits++;
+        const pickedCount = happened ? counts[eventId].yes : counts[eventId].no;
+        if(pickedCount <= RARE_THRESHOLD){ points += 2; bonusHits++; }
+        else { points += 1; }
+      }
+    });
+    return { ...pr, hits, points, bonusHits, bets };
+  }).sort((a,b)=> b.points - a.points || b.hits - a.hits);
+
+  const missingPeople = PEOPLE.filter(p => !predictions.find(pr=>pr.person_id===p.id));
+
+  let html = `<div class="rank-note">Eventos resueltos: ${resolvedCount}/${EVENTS.length}${missingPeople.length ? ' · Faltan por predecir: ' + missingPeople.map(p=>p.nick).join(', ') : ''}<br>4-5 = apuesta "sí", 1-2 = apuesta "no", 3 = neutral (no apuesta)<br>Acertar una apuesta que tomaron ${RARE_THRESHOLD} personas o menos vale doble (⚡x2)</div>`;
+
+  if(resolvedCount > 0 && scored.length >= 1){
+    const top3 = scored.slice(0,3);
+    const posClass = ['p1','p2','p3'];
+    html += `<div class="podium">`;
+    top3.forEach((pr, i)=>{
+      const person = PEOPLE.find(p=>p.id===pr.person_id);
+      html += `
+        <div class="podium-card ${posClass[i]}">
+          <div class="podium-rank">${i+1}</div>
+          ${i===0 ? '<div class="podium-trophy">🏆</div>' : ''}
+          <div class="avatar podium-avatar">${person ? avatarHTML(person) : ''}</div>
+          <div class="podium-name">${person ? person.nick : pr.person_name}</div>
+          <div class="podium-pts">${pr.points}</div>
+          <div class="podium-sub">pts · ${pr.hits} aciertos</div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+
+  scored.forEach((pr, idx)=>{
+    const person = PEOPLE.find(p=>p.id===pr.person_id);
+    html += `
+      <div class="rank-item ${idx===0 && resolvedCount>0 ? 'leader':''}">
+        <div class="rank-num">${idx+1}</div>
+        <div class="avatar">${person ? avatarHTML(person) : ''}</div>
+        <div class="rank-name-wrap">
+          <div class="rank-name">${pr.person_name}</div>
+          <div class="rank-underline" style="width:${resolvedCount>0 ? Math.max(8,(pr.points/(scored[0].points||1))*100) : 8}%"></div>
+        </div>
+        <div class="rank-score">
+          <div class="rank-pts">${pr.points} pts</div>
+          <div class="rank-sub">${pr.hits} aciertos${pr.bonusHits>0 ? ' · '+pr.bonusHits+' ⚡x2' : ''}</div>
+        </div>
+      </div>`;
+  });
+
+  rankList.innerHTML = html;
+}
+
+// init
+whoSel.value = PEOPLE[0].id;
+loadPersonState(PEOPLE[0].id);
+</script>
+</body>
+</html>
