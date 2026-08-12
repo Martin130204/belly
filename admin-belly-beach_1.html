@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Admin · Belly Beach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;1,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --sunset1:#16A34A; --sunset2:#0EA5A0; --night:#050608; --night2:#0B0D12;
+    --teal:#22C55E; --gold:#F2B705; --card:#12141A; --ink:#EAF0FB;
+  }
+  *{box-sizing:border-box;}
+  html{ overflow-x:hidden; width:100%; }
+  body{
+    margin:0; width:100%; min-height:100vh; overflow-x:hidden; font-family:'Nunito',sans-serif; color:var(--ink);
+    background: radial-gradient(circle at 20% 0%, rgba(242,183,5,0.06), transparent 45%),
+      linear-gradient(180deg, var(--night) 0%, var(--night2) 100%);
+    padding-bottom:60px;
+  }
+  header{ text-align:center; padding:28px 20px 10px; }
+  h1{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:1.4rem; margin:0 0 4px;
+    background:linear-gradient(90deg,var(--gold),var(--teal) 65%,var(--sunset2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .sub{ font-size:.82rem; color:#D9CFF2;}
+
+  #gate{ max-width:340px; margin:60px auto; padding:0 20px; text-align:center; }
+  #gate input{ width:100%; padding:13px 16px; border-radius:14px; border:2px solid rgba(255,255,255,0.18);
+    background:var(--card); color:var(--ink); font-size:1rem; margin-bottom:12px;}
+  #gate button{ width:100%; padding:13px; border-radius:14px; border:none; font-family:'Baloo 2',sans-serif; font-weight:700;
+    background:linear-gradient(120deg,var(--gold),var(--sunset1)); color:#0B1220; font-size:1rem; cursor:pointer;}
+  #gateMsg{ font-size:.78rem; color:#FF8B7A; margin-top:8px; min-height:16px;}
+
+  .tabs{ width:100%; max-width:520px; margin:16px auto 0; padding:0 18px; display:flex; gap:8px;}
+  .tab{
+    flex:1; text-align:center; padding:11px 8px; border-radius:14px; font-weight:700; font-size:.82rem;
+    background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.1); cursor:pointer; color:#D9CFF2;
+  }
+  .tab.active{ background:linear-gradient(120deg,var(--sunset1),var(--sunset2)); color:#fff; border-color:transparent;}
+
+  main{ width:100%; max-width:520px; margin:0 auto; padding:16px 18px 0; display:none;}
+  .stats{ text-align:center; font-size:.8rem; color:#D9CFF2; margin-bottom:16px;}
+  .stats span{ color:var(--gold); font-weight:700;}
+  .warn{ text-align:center; font-size:.78rem; color:#FBBF24; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); border-radius:12px; padding:10px 14px; margin-bottom:14px;}
+
+  .ev-row{
+    display:flex; align-items:center; gap:10px; background:var(--card); border-radius:14px; padding:12px 14px; margin-bottom:8px;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .ev-text{ flex:1; font-size:.85rem; font-weight:700; line-height:1.25; overflow-wrap:break-word;}
+  .ev-text[contenteditable="true"]{ outline:none; border-bottom:1px dashed rgba(255,255,255,0.25); }
+  .ev-choice{ display:flex; gap:6px; flex-shrink:0;}
+  .ev-choice button{
+    padding:8px 10px; border-radius:10px; border:2px solid rgba(255,255,255,0.15); background:transparent;
+    color:var(--ink); font-weight:700; font-size:.75rem; cursor:pointer;
+  }
+  .ev-choice button.si.sel{ background:linear-gradient(120deg,var(--teal),#4ADE80); border-color:transparent; color:#0B1220;}
+  .ev-choice button.no.sel{ background:linear-gradient(120deg,#DC2626,#F97316); border-color:transparent; color:#fff;}
+  .ev-choice button.pend.sel{ background:rgba(255,255,255,0.18); border-color:transparent; color:#fff;}
+  .icon-btn{
+    width:32px; height:32px; border-radius:9px; border:1.5px solid rgba(255,255,255,0.15); background:transparent;
+    color:var(--ink); cursor:pointer; font-size:.9rem; flex-shrink:0;
+  }
+  .icon-btn.save{ border-color:var(--teal); color:var(--teal);}
+  .icon-btn.del{ border-color:#F87171; color:#F87171;}
+
+  .addbox{
+    background:var(--card); border-radius:14px; padding:14px; margin-bottom:16px; border:1.5px dashed rgba(255,255,255,0.2);
+  }
+  .addbox textarea{
+    width:100%; min-height:56px; padding:10px 12px; border-radius:10px; border:2px solid rgba(255,255,255,0.15);
+    background:rgba(255,255,255,0.04); color:var(--ink); font-family:'Nunito',sans-serif; font-size:.88rem; resize:vertical; margin-bottom:8px;
+  }
+  .addbox button{
+    width:100%; padding:11px; border-radius:12px; border:none; font-family:'Baloo 2',sans-serif; font-weight:700;
+    background:linear-gradient(120deg,var(--gold),var(--teal)); color:#0B1220; font-size:.9rem; cursor:pointer;
+  }
+  .foot{ text-align:center; margin-top:20px; font-size:.72rem; color:#9C8FC2;}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <header><h1>Admin</h1><div class="sub">Belly Beach · eventos y resultados</div></header>
+  <input type="password" id="pw" placeholder="Contraseña">
+  <button id="pwBtn">Entrar</button>
+  <div id="gateMsg"></div>
+</div>
+
+<header id="mainHeader" style="display:none;">
+  <h1>Admin Belly Beach</h1>
+  <div class="sub">Agrega eventos mientras se define la lista, y marca resultados durante el finde.</div>
+</header>
+
+<div class="tabs" id="tabs" style="display:none;">
+  <div class="tab active" data-tab="events">Eventos</div>
+  <div class="tab" data-tab="results">Resultados</div>
+</div>
+
+<main id="eventsView">
+  <div class="addbox">
+    <textarea id="newEventText" placeholder="Texto del nuevo evento, ej: El Nave se cagona tomando"></textarea>
+    <button id="addEventBtn">+ Agregar evento</button>
+  </div>
+  <div class="stats" id="eventsStats"></div>
+  <div id="eventsList"></div>
+</main>
+
+<main id="resultsView" style="display:none;">
+  <div class="stats" id="stats"></div>
+  <div id="list"></div>
+</main>
+
+<script>
+// ====== CONFIGURA ESTO ======
+const SUPABASE_URL = "https://nvoaqjbadnyynvehdcok.supabase.co";
+const SUPABASE_KEY = "sb_publishable_ZmYsyEEDeS9ZQJK7dO4rsQ_FVicHeur";
+const ADMIN_PASSWORD = "Curauma377"; // cámbiala por la que quieras
+// =============================
+let sb = null, sbReady = false;
+try{
+  if(SUPABASE_URL !== "PON_TU_URL_AQUI" && SUPABASE_KEY !== "PON_TU_ANON_KEY_AQUI"){
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    sbReady = true;
+  }
+} catch(e){ console.error(e); }
+
+document.getElementById('pwBtn').addEventListener('click', tryEnter);
+document.getElementById('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryEnter(); });
+
+function tryEnter(){
+  const val = document.getElementById('pw').value;
+  if(val === ADMIN_PASSWORD){
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('mainHeader').style.display = 'block';
+    document.getElementById('tabs').style.display = 'flex';
+    document.getElementById('eventsView').style.display = 'block';
+    if(!sbReady){
+      document.getElementById('eventsList').innerHTML = '<div class="warn">⚠️ Falta configurar SUPABASE_URL / SUPABASE_KEY en el código.</div>';
+      document.getElementById('list').innerHTML = '<div class="warn">⚠️ Falta configurar SUPABASE_URL / SUPABASE_KEY en el código.</div>';
+      return;
+    }
+    loadEvents();
+  } else {
+    document.getElementById('gateMsg').textContent = 'Contraseña incorrecta';
+  }
+}
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const isEvents = tab.dataset.tab === 'events';
+    document.getElementById('eventsView').style.display = isEvents ? 'block' : 'none';
+    document.getElementById('resultsView').style.display = isEvents ? 'none' : 'block';
+    if(isEvents) loadEvents(); else loadResults();
+  });
+});
+
+// ===== EVENTOS =====
+let EVENTS = [];
+
+async function loadEvents(){
+  document.getElementById('eventsList').innerHTML = '<div style="text-align:center;color:#9C8FC2;">Cargando…</div>';
+  const { data } = await sb.from('events').select('id, text, sort_order').order('sort_order', { ascending:true });
+  EVENTS = data || [];
+  renderEvents();
+}
+
+function renderEvents(){
+  document.getElementById('eventsStats').innerHTML = `<span>${EVENTS.length}</span> eventos cargados`;
+  const list = document.getElementById('eventsList');
+  list.innerHTML = '';
+  EVENTS.forEach(ev=>{
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    row.innerHTML = `
+      <div class="ev-text" contenteditable="true" data-id="${ev.id}">${ev.text}</div>
+      <button class="icon-btn save" title="Guardar cambio">💾</button>
+      <button class="icon-btn del" title="Borrar evento">🗑️</button>
+    `;
+    const textEl = row.querySelector('.ev-text');
+    row.querySelector('.save').addEventListener('click', ()=> saveEventText(ev.id, textEl.textContent.trim()));
+    row.querySelector('.del').addEventListener('click', ()=> deleteEvent(ev.id, ev.text));
+    list.appendChild(row);
+  });
+}
+
+document.getElementById('addEventBtn').addEventListener('click', async ()=>{
+  const ta = document.getElementById('newEventText');
+  const text = ta.value.trim();
+  if(!text) return;
+  const nextOrder = EVENTS.length ? Math.max(...EVENTS.map(e=>e.sort_order||0)) + 1 : 1;
+  const newId = 'e_' + Date.now();
+  const { error } = await sb.from('events').insert({ id: newId, text, sort_order: nextOrder });
+  if(!error){ ta.value = ''; loadEvents(); }
+  else alert('Error al agregar: ' + error.message);
+});
+
+async function saveEventText(id, text){
+  if(!text) return;
+  await sb.from('events').update({ text }).eq('id', id);
+  loadEvents();
+}
+
+async function deleteEvent(id, text){
+  if(!confirm(`¿Borrar el evento "${text}"? Las predicciones ya enviadas para este evento quedarán sin efecto.`)) return;
+  await sb.from('events').delete().eq('id', id);
+  loadEvents();
+}
+
+// ===== RESULTADOS =====
+let currentResults = {}; // event_id -> true/false/undefined(pendiente)
+
+async function loadResults(){
+  document.getElementById('list').innerHTML = '<div style="text-align:center;color:#9C8FC2;">Cargando…</div>';
+  const [{ data: events }, { data: results }] = await Promise.all([
+    sb.from('events').select('id, text, sort_order').order('sort_order', { ascending:true }),
+    sb.from('results').select('event_id, happened')
+  ]);
+  EVENTS = events || [];
+  currentResults = {};
+  (results || []).forEach(r=>{ currentResults[r.event_id] = r.happened; });
+  renderResults();
+}
+
+function renderResults(){
+  const resolved = Object.values(currentResults).filter(v=>v!==null && v!==undefined).length;
+  document.getElementById('stats').innerHTML = `Resueltos: <span>${resolved}/${EVENTS.length}</span>`;
+
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  EVENTS.forEach(ev=>{
+    const val = currentResults[ev.id];
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    row.innerHTML = `
+      <div class="ev-text">${ev.text}</div>
+      <div class="ev-choice">
+        <button class="si ${val===true?'sel':''}" data-v="true">Sí</button>
+        <button class="no ${val===false?'sel':''}" data-v="false">No</button>
+        <button class="pend ${(val===null||val===undefined)?'sel':''}" data-v="null">?</button>
+      </div>
+    `;
+    row.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=> setResult(ev.id, btn.dataset.v));
+    });
+    list.appendChild(row);
+  });
+}
+
+async function setResult(eventId, v){
+  const happened = v === 'true' ? true : v === 'false' ? false : null;
+  currentResults[eventId] = happened;
+  renderResults();
+  await sb.from('results').upsert({ event_id: eventId, happened, updated_at: new Date().toISOString() }, { onConflict: 'event_id' });
+}
+</script>
+</body>
+</html>
